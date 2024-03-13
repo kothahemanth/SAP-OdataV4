@@ -1,4 +1,5 @@
 sap.ui.define([
+	"sap/ui/core/Messaging",
 	"sap/ui/core/mvc/Controller",
 	"sap/m/MessageToast",
 	"sap/m/MessageBox",
@@ -7,29 +8,22 @@ sap.ui.define([
 	"sap/ui/model/FilterOperator",
 	"sap/ui/model/FilterType",
 	"sap/ui/model/json/JSONModel"
-], function (Controller, MessageToast, MessageBox, Sorter, Filter, FilterOperator, FilterType, JSONModel) {
+], function (Messaging, Controller, MessageToast, MessageBox, Sorter, Filter, FilterOperator, FilterType, JSONModel) {
 	"use strict";
 
 	return Controller.extend("sap.ui.core.tutorial.odatav4.controller.App", {
 
 		onInit : function () {
-			// var oJSONData = {
-			// 	busy : false,
-			// 	order : 0
-			// };
-			// var oModel = new JSONModel(oJSONData);
-			// this.getView().setModel(oModel, "appView");
-
-			var oMessageManager = sap.ui.getCore().getMessageManager(),
-				oMessageModel = oMessageManager.getMessageModel(),
+			var oMessageModel = Messaging.getMessageModel(),
 				oMessageModelBinding = oMessageModel.bindList("/", undefined, [],
 					new Filter("technical", FilterOperator.EQ, true)),
 				oViewModel = new JSONModel({
 					busy : false,
 					hasUIChanges : false,
-					usernameEmpty : true,
+					usernameEmpty : false,
 					order : 0
 				});
+
 			this.getView().setModel(oViewModel, "appView");
 			this.getView().setModel(oMessageModel, "message");
 
@@ -101,6 +95,27 @@ sap.ui.define([
 				});
 	
 				bMessageOpen = true;
+			},
+			onDelete : function () {
+				var oContext,
+					oSelected = this.byId("peopleList").getSelectedItem(),
+					sUserName;
+	 
+				if (oSelected) {
+					oContext = oSelected.getBindingContext();
+					sUserName = oContext.getProperty("UserName");
+					oContext.delete().then(function () {
+						MessageToast.show(this._getText("deletionSuccessMessage", sUserName));
+					}.bind(this), function (oError) {
+						this._setUIChanges();
+						if (oError.canceled) {
+							MessageToast.show(this._getText("deletionRestoredMessage", sUserName));
+							return;
+						}
+						MessageBox.error(oError.message + ": " + sUserName);
+					}.bind(this));
+					this._setUIChanges(true);
+				}
 			},
 			
 		_getText : function (sTextId, aArgs) {
